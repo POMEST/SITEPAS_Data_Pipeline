@@ -4,7 +4,7 @@ data/processed/
 
 # Mengabaikan file Excel dan CSV secara umum
 *.xlsx
-*.csv
+#*.csv
 
 # Python cache
 __pycache__/
