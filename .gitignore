@@ -1,6 +1,6 @@
 # Mengabaikan folder data agar tidak ter-upload ke GitHub
 data/raw/
-data/processed/
+#data/processed/
 
 # Mengabaikan file Excel dan CSV secara umum
 *.xlsx
