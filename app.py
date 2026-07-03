@@ -42,10 +42,11 @@ df_filtered = df[
 if kata_kunci:
     df_filtered = df_filtered[df_filtered['rencana_aksi_desc'].str.contains(kata_kunci, case=False, na=False)]
 
-# Memfilter data target (untuk grafik garis)
+# Memfilter data target berdasarkan kegiatan yang sudah lolos filter di Master
+kegiatan_terpilih = df_filtered['rencana_aksi_desc'].unique()
+
 df_target_filtered = df_target[
-    df_target['kategori_tematik'].isin(pilihan_tematik) & 
-    df_target['pic_pelaksana'].isin(pilihan_pic)
+    df_target['rencana_aksi_desc'].isin(kegiatan_terpilih)
 ]
 
 
