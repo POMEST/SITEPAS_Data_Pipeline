@@ -13,43 +13,45 @@ st.markdown("---")
 def load_data():
     df_master = pd.read_csv('data/processed/master_renaksi_bps_terintegrasi.csv')
     df_target = pd.read_csv('data/processed/target_output_terintegrasi.csv')
+    
+    # [PERBAIKAN ERROR] Meminjam kolom 'pic_pelaksana' dari df_master ke df_target
+    # Ini seperti VLOOKUP berdasarkan nomor/index agar df_target punya data PIC
+    df_target = pd.merge(df_target, df_master[['kategori_tematik', 'indikator_utama', 'pic_pelaksana']], 
+                         on=['kategori_tematik', 'indikator_utama'], 
+                         how='left')
     return df_master, df_target
 
 df, df_target = load_data()
 
-# 3. SIDEBAR FILTER (Makin Lengkap!)
+# 3. SIDEBAR FILTER 
 st.sidebar.header("🔍 Filter Dashboard")
 
-# A. Filter Kategori
-tema_all = df['kategori_tematik'].unique()
+tema_all = df['kategori_tematik'].dropna().unique()
 pilihan_tematik = st.sidebar.multiselect("Pilih Kategori Tematik:", options=tema_all, default=tema_all)
 
-# B. Filter PIC (Fitur Baru)
-pic_all = df['pic_pelaksana'].unique()
+pic_all = df['pic_pelaksana'].dropna().unique()
 pilihan_pic = st.sidebar.multiselect("Pilih Unit Pelaksana (PIC):", options=pic_all, default=pic_all)
 
-# C. Kotak Pencarian (Fitur Baru)
 kata_kunci = st.sidebar.text_input("Cari Kata Kunci Kegiatan (opsional):", "")
 
+
 # 4. MENERAPKAN FILTER KE DATA
-# Memfilter Tematik DAN PIC
 df_filtered = df[
     (df['kategori_tematik'].isin(pilihan_tematik)) & 
     (df['pic_pelaksana'].isin(pilihan_pic))
 ]
 
-# Jika ada teks yang dicari, saring lagi datanya
 if kata_kunci:
     df_filtered = df_filtered[df_filtered['rencana_aksi_desc'].str.contains(kata_kunci, case=False, na=False)]
 
-# Memfilter data target (untuk grafik garis)
+# Sekarang df_target sudah punya kolom pic_pelaksana, filter pasti berhasil!
 df_target_filtered = df_target[
     df_target['kategori_tematik'].isin(pilihan_tematik) & 
-    df_target['pic_pelaksana'].isin(pilihan_pic)
+    (df_target['pic_pelaksana'].isin(pilihan_pic))
 ]
 
 
-# 5. SCORECARD (Angka Utama)
+# 5. SCORECARD
 st.subheader("📋 Ringkasan Utama")
 col1, col2, col3 = st.columns(3)
 
@@ -65,7 +67,6 @@ col_chart1, col_chart2 = st.columns(2)
 
 with col_chart1:
     st.subheader("Tren Target Penyelesaian (Per Triwulan)")
-    # Menggunakan count() agar teks "Dokumen/Laporan" tetap bisa dihitung jumlahnya
     tren_tw = df_target_filtered.groupby('periode_tw')['target_penyelesaian'].count()
     st.line_chart(tren_tw, color="#FF9800")
 
@@ -75,10 +76,9 @@ with col_chart2:
     st.bar_chart(sebaran_kategori, color="#4CAF50")
 
 
-# 7. VISUALISASI BARIS KEDUA (Fitur Baru: Beban PIC)
+# 7. VISUALISASI BARIS KEDUA 
 st.markdown("---")
 st.subheader("🏢 Distribusi Beban Kerja (Top 10 Unit Pelaksana Terpadat)")
-# Mengambil 10 PIC dengan tugas paling banyak
 beban_pic = df_filtered['pic_pelaksana'].value_counts().head(10)
 st.bar_chart(beban_pic, color="#2196F3")
 
