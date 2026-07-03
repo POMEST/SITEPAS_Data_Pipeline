@@ -68,4 +68,4 @@ st.subheader("📑 Detail Rencana Aksi")
 with st.expander("Klik di sini untuk melihat/menyembunyikan tabel rincian data"):
     st.dataframe(df_filtered, use_container_width=True)
 
-st.caption("Dikembangkan oleh [Nama Anda] - Kerja Praktik BPS RI 2026")
+st.caption("Dikembangkan oleh Abdillah Fikri Al Pome - Kerja Praktik BPS RI 2026")
