@@ -1,80 +1,62 @@
 import pandas as pd
 import os
 
-print("Memulai proses ETL Faktual untuk RB General 2025...")
+print("Memulai proses ETL Faktual untuk RB General 2025 (Logika Target)...")
 file_path = r'data\raw\Kertas Kerja Evaluasi On Going RB 2025_TW4.xlsx'
 
-# Membaca data sheet 'General' (skip 2 baris header atas)
 df_gen = pd.read_excel(file_path, sheet_name='General', skiprows=2)
-
-# Menstandarkan nama kolom menggunakan indeks angka agar aman dari perubahan format
+sub_headers = df_gen.iloc[0].astype(str).str.lower().str.strip()
 df_gen.columns = [f'col_{i}' for i in range(len(df_gen.columns))]
 
-# Memetakan data sesuai struktur asli Kertas Kerja 2025
+# Auto-Seeker Target & Realisasi
+idx_t1 = next((i for i, x in enumerate(sub_headers) if x in ['tw 1', 'tw i']), -1)
+idx_t2 = next((i for i, x in enumerate(sub_headers) if x in ['tw 2', 'tw ii']), -1)
+idx_t3 = next((i for i, x in enumerate(sub_headers) if x in ['tw 3', 'tw iii']), -1)
+idx_t4 = next((i for i, x in enumerate(sub_headers) if x in ['tw 4', 'tw iv']), -1)
+idx_target = [idx_t1, idx_t2, idx_t3, idx_t4]
+
+idx_capaian = [i for i, x in enumerate(sub_headers) if x.startswith('capaian')]
+idx_kendala = [i for i, x in enumerate(sub_headers) if x.startswith('kendala')]
+idx_solusi  = [i for i, x in enumerate(sub_headers) if x.startswith('solusi')]
+
 df_bersih = pd.DataFrame({
-    'indikator_utama': df_gen['col_1'],       # Kegiatan Utama / Indeks
-    'indikator_kegiatan': df_gen['col_2'],    # Indikator Kegiatan Utama
-    'rencana_aksi_desc': df_gen['col_5'],     # Rencana Aksi
-    'output_desc': df_gen['col_6'],           # Output
-    'pic_pelaksana': df_gen['col_14'],        # Pelaksana (Unit/Satker)
-    
-    # Realisasi Progres Capaian Kualitatif & Kuantitatif 2025 per Triwulan
-    'tw1_kegiatan': df_gen['col_15'],
-    'tw1_capaian': df_gen['col_16'],
-    'tw1_kendala': df_gen['col_18'],
-    'tw1_solusi': df_gen['col_19'],
-    
-    'tw2_kegiatan': df_gen['col_21'],
-    'tw2_capaian': df_gen['col_22'],
-    'tw2_kendala': df_gen['col_24'],
-    'tw2_solusi': df_gen['col_25'],
-    
-    'tw3_kegiatan': df_gen['col_27'],
-    'tw3_capaian': df_gen['col_28'],
-    'tw3_kendala': df_gen['col_30'],
-    'tw3_solusi': df_gen['col_31'],
-    
-    'tw4_kegiatan': df_gen['col_33'],
-    'tw4_capaian': df_gen['col_34'],
-    'tw4_kendala': df_gen['col_36'],
-    'tw4_solusi': df_gen['col_37'],
-    
-    # Catatan Evaluator
-    'catatan_evaluatur_tw4': df_gen['col_40'] if 'col_40' in df_gen.columns else None
+    'indikator_utama': df_gen.get('col_1'),
+    'rencana_aksi_desc': df_gen.get('col_5'),
+    'pic_pelaksana': df_gen.get('col_14'),
 })
 
-# Tambal Merged Cells untuk kolom Indikator Utama
-df_bersih['indikator_utama'] = df_bersih['indikator_utama'].ffill()
-df_bersih['indikator_kegiatan'] = df_bersih['indikator_kegiatan'].ffill()
+for tw in range(4):
+    if tw < len(idx_target) and idx_target[tw] != -1: 
+        df_bersih[f'tw{tw+1}_target'] = df_gen.get(f'col_{idx_target[tw]}')
+    if tw < len(idx_capaian): df_bersih[f'tw{tw+1}_capaian_raw'] = df_gen.get(f'col_{idx_capaian[tw]}')
+    if tw < len(idx_kendala): df_bersih[f'tw{tw+1}_kendala'] = df_gen.get(f'col_{idx_kendala[tw]}')
+    if tw < len(idx_solusi):  df_bersih[f'tw{tw+1}_solusi']  = df_gen.get(f'col_{idx_solusi[tw]}')
 
-# Bersihkan baris sampah (potong baris yang tidak memiliki deskripsi Rencana Aksi)
+df_bersih = df_bersih.iloc[1:].reset_index(drop=True)
+df_bersih['indikator_utama'] = df_bersih['indikator_utama'].ffill()
 df_bersih = df_bersih.dropna(subset=['rencana_aksi_desc'])
 
-# Membersihkan teks spasi tersembunyi
-df_bersih['indikator_utama'] = df_bersih['indikator_utama'].str.strip()
+# Fungsi Logika Bisnis Pencapaian
+def hitung_status(target, capaian):
+    try: t = float(target)
+    except: t = 0.0
+    
+    try: c = float(str(capaian).replace('%', '').replace(',', '.').strip())
+    except: c = 0.0
+    
+    if t > 0:
+        pct = (c / t) * 100
+        return min(pct, 100.0), "Normal"
+    else:
+        if c > 0: return 100.0, "Tercapai Lebih Awal"
+        else: return 0.0, "Belum Ada Target"
 
-# --- STANDARISASI ANGKA CAPAIAN (Mengubah Teks/Persen menjadi Angka Murni) ---
-def clean_percentage(val):
-    if pd.isna(val):
-        return 0.0
-    val_str = str(val).replace('%', '').strip()
-    try:
-        # Jika isinya angka biasa seperti 100 atau 85.5
-        return float(val_str)
-    except ValueError:
-        # Jika isinya teks penjelasan (misal: "Belum terjadwal"), set ke 0 sementara
-        return 0.0
+for tw in range(1, 5):
+    if f'tw{tw}_target' in df_bersih.columns and f'tw{tw}_capaian_raw' in df_bersih.columns:
+        hasil = df_bersih.apply(lambda row: hitung_status(row[f'tw{tw}_target'], row[f'tw{tw}_capaian_raw']), axis=1)
+        df_bersih[f'tw{tw}_capaian'] = [res[0] for res in hasil]
+        df_bersih[f'tw{tw}_status'] = [res[1] for res in hasil]
 
-# Bersihkan kolom capaian dari TW1 sampai TW4
-for tw in ['tw1_capaian', 'tw2_capaian', 'tw3_capaian', 'tw4_capaian']:
-    df_bersih[tw] = df_bersih[tw].apply(clean_percentage)
-
-# Membuat nilai rata-rata kumulatif tahunan sebagai metrik utama di dashboard
-df_bersih['capaian_tahunan_rata'] = df_bersih[['tw1_capaian', 'tw2_capaian', 'tw3_capaian', 'tw4_capaian']].mean(axis=1)
-
-# Simpan ke folder processed
 os.makedirs(r'data\processed', exist_ok=True)
-path_simpan = r'data\processed\master_general_2025.csv'
-df_bersih.to_csv(path_simpan, index=False)
-
-print(f"✅ ETL General 2025 Sukses! Data FAKTUAL disimpan di {path_simpan}")
+df_bersih.to_csv(r'data\processed\master_general_2025.csv', index=False)
+print("✅ ETL General 2025 Sukses (Dengan Logika Target)!")
