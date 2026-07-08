@@ -1,68 +1,57 @@
 import pandas as pd
 import os
 
-print("Memulai proses ETL Faktual untuk Tematik Baru 2025...")
+print("Memulai proses ETL Faktual untuk Tematik Baru 2025 (Logika Target)...")
 file_path = r'data\raw\Kertas Kerja Evaluasi On Going RB 2025_TW4.xlsx'
 
-nama_sheet = 'Tematik Baru'
+try: df_tem = pd.read_excel(file_path, sheet_name='Tematik Baru', skiprows=2)
+except ValueError: exit()
 
-try:
-    df_tem = pd.read_excel(file_path, sheet_name=nama_sheet, skiprows=2)
-except ValueError:
-    print(f"Error: Sheet '{nama_sheet}' tidak ditemukan.")
-    exit()
-
+sub_headers = df_tem.iloc[0].astype(str).str.lower().str.strip()
 df_tem.columns = [f'col_{i}' for i in range(len(df_tem.columns))]
 
+idx_t1 = next((i for i, x in enumerate(sub_headers) if x in ['tw 1', 'tw i']), -1)
+idx_t2 = next((i for i, x in enumerate(sub_headers) if x in ['tw 2', 'tw ii']), -1)
+idx_t3 = next((i for i, x in enumerate(sub_headers) if x in ['tw 3', 'tw iii']), -1)
+idx_t4 = next((i for i, x in enumerate(sub_headers) if x in ['tw 4', 'tw iv']), -1)
+idx_target = [idx_t1, idx_t2, idx_t3, idx_t4]
+
+idx_capaian = [i for i, x in enumerate(sub_headers) if x.startswith('capaian')]
+idx_kendala = [i for i, x in enumerate(sub_headers) if x.startswith('kendala')]
+idx_solusi  = [i for i, x in enumerate(sub_headers) if x.startswith('solusi')]
+
 df_bersih = pd.DataFrame({
-    'indikator_utama': df_tem.get('col_1'),   # Tema
+    'indikator_utama': df_tem.get('col_1'),   
     'penyesuaian_tema': df_tem.get('col_2'),
-    'rencana_aksi_desc': df_tem.get('col_9'), # Rencana Aksi (Lebih jauh ke kanan)
-    'pic_pelaksana': df_tem.get('col_18'),    # Unit Pelaksana
-    'anggaran': df_tem.get('col_17'),
-    
-    # Realisasi TW 1
-    'tw1_capaian': df_tem.get('col_21'),
-    'tw1_kendala': df_tem.get('col_23'),
-    'tw1_solusi': df_tem.get('col_24'),
-    
-    # Realisasi TW 2
-    'tw2_capaian': df_tem.get('col_26'),
-    'tw2_kendala': df_tem.get('col_28'),
-    'tw2_solusi': df_tem.get('col_29'),
-    
-    # Realisasi TW 3
-    'tw3_capaian': df_tem.get('col_31'),
-    'tw3_kendala': df_tem.get('col_33'),
-    'tw3_solusi': df_tem.get('col_34'),
-    
-    # Realisasi TW 4
-    'tw4_capaian': df_tem.get('col_36'),
-    'tw4_kendala': df_tem.get('col_38'),
-    'tw4_solusi': df_tem.get('col_39'),
+    'rencana_aksi_desc': df_tem.get('col_9'), 
+    'pic_pelaksana': df_tem.get('col_18'),    
 })
 
-if 'indikator_utama' in df_bersih.columns:
-    df_bersih['indikator_utama'] = df_bersih['indikator_utama'].ffill()
+for tw in range(4):
+    if tw < len(idx_target) and idx_target[tw] != -1: 
+        df_bersih[f'tw{tw+1}_target'] = df_tem.get(f'col_{idx_target[tw]}')
+    if tw < len(idx_capaian): df_bersih[f'tw{tw+1}_capaian_raw'] = df_tem.get(f'col_{idx_capaian[tw]}')
+    if tw < len(idx_kendala): df_bersih[f'tw{tw+1}_kendala'] = df_tem.get(f'col_{idx_kendala[tw]}')
+    if tw < len(idx_solusi):  df_bersih[f'tw{tw+1}_solusi']  = df_tem.get(f'col_{idx_solusi[tw]}')
 
+df_bersih = df_bersih.iloc[1:].reset_index(drop=True)
+if 'indikator_utama' in df_bersih.columns: df_bersih['indikator_utama'] = df_bersih['indikator_utama'].ffill()
 df_bersih = df_bersih.dropna(subset=['rencana_aksi_desc'])
 
-# Fungsi Pembersih Persentase
-def clean_percentage(val):
-    if pd.isna(val): return 0.0
-    val_str = str(val).replace('%', '').strip()
-    try: return float(val_str)
-    except ValueError: return 0.0
+def hitung_status(target, capaian):
+    try: t = float(target)
+    except: t = 0.0
+    try: c = float(str(capaian).replace('%', '').replace(',', '.').strip())
+    except: c = 0.0
+    if t > 0: return min((c / t) * 100, 100.0), "Normal"
+    else: return (100.0, "Tercapai Lebih Awal") if c > 0 else (0.0, "Belum Ada Target")
 
-for tw in ['tw1_capaian', 'tw2_capaian', 'tw3_capaian', 'tw4_capaian']:
-    if tw in df_bersih.columns:
-        df_bersih[tw] = df_bersih[tw].apply(clean_percentage)
-
-df_bersih['capaian_tahunan_rata'] = df_bersih[['tw1_capaian', 'tw2_capaian', 'tw3_capaian', 'tw4_capaian']].mean(axis=1)
-df_bersih['kategori_tab'] = 'Tematik Baru'
+for tw in range(1, 5):
+    if f'tw{tw}_target' in df_bersih.columns and f'tw{tw}_capaian_raw' in df_bersih.columns:
+        hasil = df_bersih.apply(lambda row: hitung_status(row[f'tw{tw}_target'], row[f'tw{tw}_capaian_raw']), axis=1)
+        df_bersih[f'tw{tw}_capaian'] = [res[0] for res in hasil]
+        df_bersih[f'tw{tw}_status'] = [res[1] for res in hasil]
 
 os.makedirs(r'data\processed', exist_ok=True)
-path_simpan = r'data\processed\master_tematik_baru_2025.csv'
-df_bersih.to_csv(path_simpan, index=False)
-
-print(f"✅ ETL Tematik Baru 2025 Sukses! Data disimpan di {path_simpan}")
+df_bersih.to_csv(r'data\processed\master_tematik_baru_2025.csv', index=False)
+print("✅ ETL Tematik Baru 2025 Sukses (Dengan Logika Target)!")
