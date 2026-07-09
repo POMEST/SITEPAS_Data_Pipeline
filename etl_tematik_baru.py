@@ -1,57 +1,85 @@
 import pandas as pd
 import os
 
-print("Memulai proses ETL Faktual untuk Tematik Baru 2025 (Logika Target)...")
+print("Memulai proses ETL Faktual untuk Tematik Baru 2025 (Strict Numeric & Custom Status)...")
 file_path = r'data\raw\Kertas Kerja Evaluasi On Going RB 2025_TW4.xlsx'
 
-try: df_tem = pd.read_excel(file_path, sheet_name='Tematik Baru', skiprows=2)
-except ValueError: exit()
+df_raw = pd.read_excel(file_path, sheet_name='Tematik Baru', header=None)
+df_data = df_raw.iloc[5:].reset_index(drop=True)
 
-sub_headers = df_tem.iloc[0].astype(str).str.lower().str.strip()
-df_tem.columns = [f'col_{i}' for i in range(len(df_tem.columns))]
-
-idx_t1 = next((i for i, x in enumerate(sub_headers) if x in ['tw 1', 'tw i']), -1)
-idx_t2 = next((i for i, x in enumerate(sub_headers) if x in ['tw 2', 'tw ii']), -1)
-idx_t3 = next((i for i, x in enumerate(sub_headers) if x in ['tw 3', 'tw iii']), -1)
-idx_t4 = next((i for i, x in enumerate(sub_headers) if x in ['tw 4', 'tw iv']), -1)
-idx_target = [idx_t1, idx_t2, idx_t3, idx_t4]
-
-idx_capaian = [i for i, x in enumerate(sub_headers) if x.startswith('capaian')]
-idx_kendala = [i for i, x in enumerate(sub_headers) if x.startswith('kendala')]
-idx_solusi  = [i for i, x in enumerate(sub_headers) if x.startswith('solusi')]
-
+# INDEX MAPPING KHUSUS SHEET TEMATIK BARU
 df_bersih = pd.DataFrame({
-    'indikator_utama': df_tem.get('col_1'),   
-    'penyesuaian_tema': df_tem.get('col_2'),
-    'rencana_aksi_desc': df_tem.get('col_9'), 
-    'pic_pelaksana': df_tem.get('col_18'),    
+    'indikator_utama': df_data[1].ffill(),    # Tema
+    'penyesuaian_tema': df_data[2].ffill(),   # Penyesuaian Tema (Dibutuhkan di Streamlit)
+    'rencana_aksi_desc': df_data[9],          # Rencana Aksi
+    'satuan': df_data[10],                    # Satuan Output
+    'pic_pelaksana': df_data[19],             # Koordinator/PJK
+    
+    'tw1_target_raw': df_data[12],
+    'tw2_target_raw': df_data[13],
+    'tw3_target_raw': df_data[14],
+    'tw4_target_raw': df_data[15],
+    
+    'tw1_capaian_raw': df_data[22],
+    'tw2_capaian_raw': df_data[27],
+    'tw3_capaian_raw': df_data[32],
+    'tw4_capaian_raw': df_data[37],
+    
+    'tw4_kendala': df_data[39],
+    'tw4_solusi': df_data[40],
 })
 
-for tw in range(4):
-    if tw < len(idx_target) and idx_target[tw] != -1: 
-        df_bersih[f'tw{tw+1}_target'] = df_tem.get(f'col_{idx_target[tw]}')
-    if tw < len(idx_capaian): df_bersih[f'tw{tw+1}_capaian_raw'] = df_tem.get(f'col_{idx_capaian[tw]}')
-    if tw < len(idx_kendala): df_bersih[f'tw{tw+1}_kendala'] = df_tem.get(f'col_{idx_kendala[tw]}')
-    if tw < len(idx_solusi):  df_bersih[f'tw{tw+1}_solusi']  = df_tem.get(f'col_{idx_solusi[tw]}')
-
-df_bersih = df_bersih.iloc[1:].reset_index(drop=True)
-if 'indikator_utama' in df_bersih.columns: df_bersih['indikator_utama'] = df_bersih['indikator_utama'].ffill()
 df_bersih = df_bersih.dropna(subset=['rencana_aksi_desc'])
+df_bersih = df_bersih[~df_bersih['rencana_aksi_desc'].astype(str).str.contains('Rencana Aksi', case=False)]
 
-def hitung_status(target, capaian):
-    try: t = float(target)
-    except: t = 0.0
-    try: c = float(str(capaian).replace('%', '').replace(',', '.').strip())
-    except: c = 0.0
-    if t > 0: return min((c / t) * 100, 100.0), "Normal"
-    else: return (100.0, "Tercapai Lebih Awal") if c > 0 else (0.0, "Belum Ada Target")
+def get_number(val, fallback=0.0):
+    if pd.isna(val): return 0.0
+    s = str(val).strip().lower()
+    if s in ['-', '', 'nan', 'none']: return 0.0
+    s = s.replace('%', '').replace(',', '.')
+    try:
+        return float(s)
+    except ValueError:
+        return float(fallback)
 
 for tw in range(1, 5):
-    if f'tw{tw}_target' in df_bersih.columns and f'tw{tw}_capaian_raw' in df_bersih.columns:
-        hasil = df_bersih.apply(lambda row: hitung_status(row[f'tw{tw}_target'], row[f'tw{tw}_capaian_raw']), axis=1)
-        df_bersih[f'tw{tw}_capaian'] = [res[0] for res in hasil]
-        df_bersih[f'tw{tw}_status'] = [res[1] for res in hasil]
+    target_clean, capaian_persen, status_list = [], [], []
+    
+    for i in range(len(df_bersih)):
+        t_raw = df_bersih.iloc[i][f'tw{tw}_target_raw']
+        c_raw = df_bersih.iloc[i][f'tw{tw}_capaian_raw']
+        tw4_t_raw = df_bersih.iloc[i]['tw4_target_raw']
+        
+        t = get_number(t_raw, 0.0)
+        c = get_number(c_raw, fallback=t)
+        tw4_t = get_number(tw4_t_raw, 0.0)
+        
+        is_percent = (tw4_t == 100.0 or tw4_t == 1.0)
+        if is_percent:
+            if t > 1.0 and (0.0 < c <= 1.0): c = c * 100.0
+            elif c > 1.0 and (0.0 < t <= 1.0): t = t * 100.0
+                
+        target_clean.append(t)
+        
+        if t == 0:
+            if c > 0:
+                capaian_persen.append(100.0)
+                status_list.append("Tercapai Lebih Awal")
+            else:
+                capaian_persen.append(0.0)
+                status_list.append("Belum Ada Target Pada TW Ini")
+        else:
+            pct = (c / t) * 100.0
+            capaian_persen.append(min(pct, 100.0))
+            if c == t: status_list.append("Tercapai")
+            elif c > t: status_list.append("Tercapai Melebihi Target")
+            elif c < t: status_list.append("Belum Tercapai Pada TW Ini")
+                
+    df_bersih[f'tw{tw}_target'] = target_clean
+    df_bersih[f'tw{tw}_capaian'] = capaian_persen
+    df_bersih[f'tw{tw}_status'] = status_list
+    df_bersih = df_bersih.drop(columns=[f'tw{tw}_target_raw', f'tw{tw}_capaian_raw'])
 
 os.makedirs(r'data\processed', exist_ok=True)
 df_bersih.to_csv(r'data\processed\master_tematik_baru_2025.csv', index=False)
-print("✅ ETL Tematik Baru 2025 Sukses (Dengan Logika Target)!")
+print("✅ ETL Tematik Baru 2025 Sukses!")
