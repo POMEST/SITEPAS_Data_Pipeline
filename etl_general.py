@@ -101,4 +101,4 @@ for tw in range(1, 5):
 # 4. Simpan ke CSV
 os.makedirs(r'data\processed', exist_ok=True)
 df_bersih.to_csv(r'data\processed\master_general_2025.csv', index=False)
-print("✅ ETL General 2025 Sukses! Status dinamis telah berhasil diterapkan.")
+print("✅ ETL General 2025 Sukses! Status dinamis telah berhasil diterapkan. - silahkan cek file 'data/processed/master_general_2025.csv' untuk hasilnya.")
