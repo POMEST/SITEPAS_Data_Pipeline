@@ -81,4 +81,4 @@ for tw in range(1, 5):
 
 os.makedirs(r'data\processed', exist_ok=True)
 df_bersih.to_csv(r'data\processed\master_tematik_2025.csv', index=False)
-print("✅ ETL Tematik 2025 Sukses!")
+print("✅ ETL Tematik 2025 Sukses - silahkan cek file 'data/processed/master_tematik_2025.csv' untuk hasilnya.")
