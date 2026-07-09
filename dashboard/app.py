@@ -5,17 +5,31 @@ import os
 st.set_page_config(page_title="Dashboard Evaluasi RB 2025", layout="wide", page_icon="📈")
 
 # --- CSS CUSTOM UNTUK MENINGKATKAN UI ---
-st.markdown("""
-<style>
-    .metric-container {
-        background-color: #f0f2f6;
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
-    }
-</style>
-""", unsafe_allow_html=True)
+def tampilkan_scorecard(df_filter):
+    st.markdown("### Ringkasan Eksekutif")
+    c1, c2, c3 = st.columns(3)
+    
+    with c1: 
+        with st.container(border=True):
+            st.metric("Total Rencana Aksi", len(df_filter))
+            
+    with c2: 
+        with st.container(border=True):
+            st.metric("Unit/PIC Terlibat", df_filter['pic_pelaksana'].nunique())
+    
+    # Rata-rata dihitung dari yang memiliki status 'Tercapai', 'Tercapai Melebihi Target', 'Belum Tercapai Pada TW Ini'
+    valid_rows = df_filter[df_filter['tw4_status'].isin(['Tercapai', 'Tercapai Melebihi Target', 'Belum Tercapai Pada TW Ini'])]
+    if not valid_rows.empty:
+        rata_capaian = valid_rows['tw4_capaian'].astype(float).mean()
+        rata_text = f"{rata_capaian:.1f}%"
+    else:
+        rata_text = "N/A"
+        
+    with c3: 
+        with st.container(border=True):
+            st.metric("Rata-rata Capaian (TW4)", rata_text)
+            
+    st.markdown("<br>", unsafe_allow_html=True)
 
 @st.cache_data 
 def load_data():
