@@ -4,32 +4,29 @@ import os
 
 st.set_page_config(page_title="Dashboard Evaluasi RB 2025", layout="wide", page_icon="📈")
 
-# --- CSS CUSTOM UNTUK MENINGKATKAN UI ---
-def tampilkan_scorecard(df_filter):
-    st.markdown("### Ringkasan Eksekutif")
-    c1, c2, c3 = st.columns(3)
-    
-    with c1: 
-        with st.container(border=True):
-            st.metric("Total Rencana Aksi", len(df_filter))
-            
-    with c2: 
-        with st.container(border=True):
-            st.metric("Unit/PIC Terlibat", df_filter['pic_pelaksana'].nunique())
-    
-    # Rata-rata dihitung dari yang memiliki status 'Tercapai', 'Tercapai Melebihi Target', 'Belum Tercapai Pada TW Ini'
-    valid_rows = df_filter[df_filter['tw4_status'].isin(['Tercapai', 'Tercapai Melebihi Target', 'Belum Tercapai Pada TW Ini'])]
-    if not valid_rows.empty:
-        rata_capaian = valid_rows['tw4_capaian'].astype(float).mean()
-        rata_text = f"{rata_capaian:.1f}%"
-    else:
-        rata_text = "N/A"
-        
-    with c3: 
-        with st.container(border=True):
-            st.metric("Rata-rata Capaian (TW4)", rata_text)
-            
-    st.markdown("<br>", unsafe_allow_html=True)
+# --- CUSTOM CSS ---
+st.markdown("""
+<style>
+.metric-container {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+}
+.metric-container h4 {
+    margin-top: 0;
+    color: #6c757d;
+    font-size: 1rem;
+}
+.metric-container h2 {
+    margin-bottom: 0;
+    color: #343a40;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 @st.cache_data 
 def load_data():
@@ -37,43 +34,51 @@ def load_data():
         path = os.path.join('data', 'processed', file_name)
         if os.path.exists(path): return pd.read_csv(path)
         return pd.DataFrame()
-    return read_csv_safe('master_general_2025.csv'), read_csv_safe('master_tematik_2025.csv'), read_csv_safe('master_tematik_baru_2025.csv')
+        
+    # Pastikan nama file disesuaikan dengan file hasil cleaning yang terakhir dibuat
+    return read_csv_safe('master_general_2025_cleaned.csv'), \
+           read_csv_safe('master_tematik_2025_cleaned.csv'), \
+           read_csv_safe('master_tematik_baru_2025_cleaned.csv')
 
 df_gen, df_tem, df_tem_baru = load_data()
+
 
 def tampilkan_scorecard(df_filter):
     st.markdown("### Ringkasan Eksekutif")
     c1, c2, c3 = st.columns(3)
+    
     with c1: 
         st.markdown(f"<div class='metric-container'><h4>Total Rencana Aksi</h4><h2>{len(df_filter)}</h2></div>", unsafe_allow_html=True)
     with c2: 
         st.markdown(f"<div class='metric-container'><h4>Unit/PIC Terlibat</h4><h2>{df_filter['pic_pelaksana'].nunique()}</h2></div>", unsafe_allow_html=True)
     
-    # Rata-rata dihitung dari yang memiliki status 'Tercapai', 'Tercapai Melebihi Target', 'Belum Tercapai Pada TW Ini' (Tidak termasuk yang Belum Ada Target)
-    valid_rows = df_filter[df_filter['tw4_status'].isin(['Tercapai', 'Tercapai Melebihi Target', 'Belum Tercapai Pada TW Ini'])]
-    if not valid_rows.empty:
-        rata_capaian = valid_rows['tw4_capaian'].astype(float).mean()
+    # Menghitung Rata-rata dari kolom 'Persentase Pencapaian Target'
+    if not df_filter.empty and 'Persentase Pencapaian Target' in df_filter.columns:
+        # Menghapus simbol '%' dan mengubah ke numerik untuk dihitung rata-ratanya
+        rata_capaian = df_filter['Persentase Pencapaian Target'].astype(str).str.replace('%', '').astype(float).mean()
         rata_text = f"{rata_capaian:.1f}%"
     else:
         rata_text = "N/A"
         
     with c3: 
-        st.markdown(f"<div class='metric-container'><h4>Rata-rata Capaian (TW4)</h4><h2>{rata_text}</h2></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='metric-container'><h4>Rata-rata Kelulusan Aksi</h4><h2>{rata_text}</h2></div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
-def tampilkan_card_rencana_aksi(row, is_tematik_baru=False):
+
+def tampilkan_card_rencana_aksi(row):
     with st.container(border=True):
-        st.subheader(row['rencana_aksi_desc'])
+        st.subheader(row.get('Rencana Aksi', 'Nama Rencana Aksi Tidak Ditemukan'))
         
         # Meta info
-        col_meta1, col_meta2 = st.columns([1, 1])
+        col_meta1, col_meta2, col_meta3 = st.columns([2, 1, 1])
         with col_meta1:
-            st.caption(f"**PIC Pelaksana:** {row['pic_pelaksana']}")
+            st.caption(f"**PIC Pelaksana:** {row.get('pic_pelaksana', '-')}")
         with col_meta2:
-            st.caption(f"**Satuan Output:** {row['satuan']}")
-            
-        if is_tematik_baru and 'penyesuaian_tema' in row and pd.notna(row['penyesuaian_tema']):
-            st.info(f"🔄 **Penyesuaian Tema:** {row['penyesuaian_tema']}")
+            st.caption(f"**Satuan Output:** {row.get('output(Satuan)', '-')}")
+        with col_meta3:
+            # Menampilkan Persentase Total Keseluruhan TW
+            pct_total = row.get('Persentase Pencapaian Target', '0%')
+            st.markdown(f"**Pencapaian Target:** :blue[{pct_total}]")
             
         st.markdown("---")
         
@@ -82,50 +87,33 @@ def tampilkan_card_rencana_aksi(row, is_tematik_baru=False):
         for tw in range(1, 5):
             with t_cols[tw-1]:
                 st.markdown(f"**Triwulan {tw}**")
-                status = str(row.get(f'tw{tw}_status', '-'))
-                capaian = row.get(f'tw{tw}_capaian', 0.0)
                 
-                try: capaian_val = float(capaian)
-                except: capaian_val = 0.0
+                # Mengambil nilai capaian dan target
+                capaian = row.get(f'capaian output tw {tw}', 0.0)
+                target = row.get(f'target tw {tw}', 0.0)
+                status = str(row.get(f'status tw {tw}', '-'))
                 
-                # RENDERING STATUS SESUAI LOGIKA BARU
-                if status == "Belum Ada Target Pada TW Ini":
-                    st.markdown("<p style='color: grey;'>⚪ <i>Belum ada target</i></p>", unsafe_allow_html=True)
-                elif status == "Tercapai Lebih Awal":
-                    st.success(f"⭐ **100%** (Selesai Lebih Awal)")
-                elif status == "Tercapai":
-                    st.metric(label="", value=f"{capaian_val:.0f}%", label_visibility="collapsed")
-                    st.progress(1.0) # Bar penuh
-                    st.caption("✅ Tercapai")
-                elif status == "Tercapai Melebihi Target":
-                    st.metric(label="", value=f"{capaian_val:.0f}%", label_visibility="collapsed")
-                    st.progress(1.0) # Bar penuh
-                    st.caption("🔥 Melebihi Target")
-                elif status == "Belum Tercapai Pada TW Ini":
-                    st.metric(label="", value=f"{capaian_val:.1f}%", label_visibility="collapsed")
-                    st.progress(min(capaian_val / 100.0, 1.0))
-                    st.caption("⚠️ Belum Tercapai")
+                # Format angka untuk menghilangkan desimal .0 jika memungkinkan
+                def format_num(val):
+                    try: return f"{float(val):.0f}" if float(val).is_integer() else f"{float(val)}"
+                    except: return str(val)
+                
+                st.caption(f"Capaian: **{format_num(capaian)}** / Target: **{format_num(target)}**")
+                
+                # Logika Simbol Centang dan Silang
+                if status == "Target Tercapai":
+                    st.success("✅ Target Tercapai")
+                elif status == "Tidak Ada Target":
+                    st.info("✅ Aman (Tidak Ada Target)")
+                elif status == "Tidak Tercapai":
+                    st.error("❌ Tidak Tercapai")
                 else:
                     st.markdown("-")
-                    
-        # --- KENDALA & SOLUSI ---
-        kendala = str(row.get('tw4_kendala', '')).strip()
-        solusi = str(row.get('tw4_solusi', '')).strip()
-        
-        # Tampilkan expander jika ada kendala/solusi (menghemat ruang UI)
-        has_kendala = kendala.lower() not in ['nan', 'none', '-', '']
-        has_solusi = solusi.lower() not in ['nan', 'none', '-', '']
-        
-        if has_kendala or has_solusi:
-            with st.expander("Lihat Kendala & Solusi (TW 4)"):
-                if has_kendala:
-                    st.error(f"🚨 **Kendala:** {row['tw4_kendala']}")
-                if has_solusi:
-                    st.info(f"💡 **Solusi/Tindak Lanjut:** {row['tw4_solusi']}")
+
 
 # --- MAIN APP LAYOUT ---
 st.title("📈 Dashboard Evaluasi Kinerja RB BPS (Tahun 2025)")
-st.markdown("Aplikasi Monitoring dan Perancangan Data Pipeline Rencana Aksi Reformasi Birokrasi.")
+st.markdown("Aplikasi Monitoring dan Evaluasi Pencapaian Target per Rencana Aksi.")
 st.markdown("---")
 
 tab_general, tab_tematik, tab_tematik_baru = st.tabs([
@@ -134,35 +122,35 @@ tab_general, tab_tematik, tab_tematik_baru = st.tabs([
     "🚀 EVALUASI TEMATIK BARU"
 ])
 
-# Render TAB GENERAL
+# Render TAB GENERAL    
 with tab_general:
     if not df_gen.empty:
-        indeks = st.selectbox("Pilih Indikator Utama (General):", options=df_gen['indikator_utama'].dropna().unique())
-        df_filter = df_gen[df_gen['indikator_utama'] == indeks]
+        indeks = st.selectbox("Pilih Indikator Utama (General):", options=df_gen['indikator kegiatan utama'].dropna().unique())
+        df_filter = df_gen[df_gen['indikator kegiatan utama'] == indeks]
         tampilkan_scorecard(df_filter)
         for _, row in df_filter.iterrows(): 
             tampilkan_card_rencana_aksi(row)
     else:
-        st.warning("Data RB General belum tersedia. Pastikan proses ETL telah dijalankan.")
+        st.warning("Data RB General belum tersedia. Pastikan file CSV tersedia di folder data/processed.")
 
 # Render TAB TEMATIK
 with tab_tematik:
     if not df_tem.empty:
-        tema = st.selectbox("Pilih Fokus Tematik:", options=df_tem['indikator_utama'].dropna().unique())
-        df_filter = df_tem[df_tem['indikator_utama'] == tema]
+        tema = st.selectbox("Pilih Fokus Tematik:", options=df_tem['indikator kegiatan utama'].dropna().unique())
+        df_filter = df_tem[df_tem['indikator kegiatan utama'] == tema]
         tampilkan_scorecard(df_filter)
         for _, row in df_filter.iterrows(): 
             tampilkan_card_rencana_aksi(row)
     else:
-        st.warning("Data RB Tematik belum tersedia. Pastikan proses ETL telah dijalankan.")
+        st.warning("Data RB Tematik belum tersedia. Pastikan file CSV tersedia di folder data/processed.")
 
 # Render TAB TEMATIK BARU
 with tab_tematik_baru:
     if not df_tem_baru.empty:
-        tema_baru = st.selectbox("Pilih Fokus Tematik Baru:", options=df_tem_baru['indikator_utama'].dropna().unique())
-        df_filter = df_tem_baru[df_tem_baru['indikator_utama'] == tema_baru]
+        tema_baru = st.selectbox("Pilih Fokus Tematik Baru:", options=df_tem_baru['indikator kegiatan utama'].dropna().unique())
+        df_filter = df_tem_baru[df_tem_baru['indikator kegiatan utama'] == tema_baru]
         tampilkan_scorecard(df_filter)
         for _, row in df_filter.iterrows(): 
-            tampilkan_card_rencana_aksi(row, is_tematik_baru=True)
+            tampilkan_card_rencana_aksi(row)
     else:
-        st.warning("Data RB Tematik Baru belum tersedia. Pastikan proses ETL telah dijalankan.")
+        st.warning("Data RB Tematik Baru belum tersedia. Pastikan file CSV tersedia di folder data/processed.")
