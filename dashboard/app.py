@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
 import os
-import plotly.express as px  # Library baru untuk visualisasi interaktif
+import plotly.express as px
 
-st.set_page_config(page_title="Dashboard Evaluasi RB 2025", layout="wide", page_icon="📈")
+st.set_page_config(page_title="Dashboard Evaluasi RB 2025", layout="wide")
 
 # --- CUSTOM CSS ---
 st.markdown("""
@@ -47,7 +47,7 @@ df_gen, df_tem, df_tem_baru = load_data()
 # FUNGSI BARU: TAMPILAN OVERVIEW KESELURUHAN
 # ==========================================
 def tampilkan_overview_umum(df, judul_tab):
-    st.markdown(f"## 🌐 Tinjauan Umum: {judul_tab}")
+    st.markdown(f"## Tinjauan Umum: {judul_tab}")
     st.caption("Ringkasan performa dari seluruh indikator utama sebelum difilter.")
     
     # 1. Metrik Agregat Keseluruhan
@@ -69,7 +69,7 @@ def tampilkan_overview_umum(df, judul_tab):
     
     # 2. Visualisasi Data (Plotly Chart)
     with col_chart:
-        st.markdown("**📊 Sebaran Status Akhir (TW 4) per Indikator Utama**")
+        st.markdown("**Sebaran Status Akhir (TW 4) per Indikator Utama**")
         if 'status tw 4' in df.columns and 'indikator kegiatan utama' in df.columns:
             # Mengelompokkan data untuk chart
             df_chart = df.groupby(['indikator kegiatan utama', 'status tw 4']).size().reset_index(name='Jumlah Aksi')
@@ -104,19 +104,19 @@ def tampilkan_overview_umum(df, judul_tab):
             
     # 3. Insight Tambahan
     with col_insight:
-        st.markdown("**💡 Insight Penting**")
+        st.markdown("**Insight Penting**")
         with st.container(border=True):
             # PIC dengan beban kerja terbanyak
             top_pic = df['pic_pelaksana'].value_counts().head(1)
             if not top_pic.empty:
-                st.write("🎯 **PIC Beban Tertinggi:**")
+                st.write("**PIC Beban Tertinggi:**")
                 st.info(f"{top_pic.index[0]} ({top_pic.values[0]} Aksi)")
             
             # Mencari Rencana Aksi yang masih 0% capaiannya secara keseluruhan
             if 'Persentase Pencapaian Target' in df.columns:
                 df['pct_num'] = df['Persentase Pencapaian Target'].astype(str).str.replace('%', '').astype(float)
                 aksi_nol = df[df['pct_num'] == 0]
-                st.write("⚠️ **Aksi Belum Berjalan (0%):**")
+                st.write("**Aksi Belum Berjalan (0%):**")
                 if not aksi_nol.empty:
                     st.error(f"Terdapat {len(aksi_nol)} Rencana Aksi yang capaiannya masih 0%.")
                 else:
@@ -128,10 +128,10 @@ def tampilkan_overview_umum(df, judul_tab):
 
 
 # ==========================================
-# FUNGSI DETAIL PER INDIKATOR (Sudah Ada)
+# FUNGSI DETAIL PER INDIKATOR
 # ==========================================
 def tampilkan_scorecard(df_filter):
-    st.markdown("### 🔎 Detail Indikator Terpilih")
+    st.markdown("### Detail Indikator Terpilih")
     c1, c2, c3 = st.columns(3)
     
     with c1: 
@@ -180,6 +180,7 @@ def tampilkan_card_rencana_aksi(row):
                 
                 st.caption(f"Capaian: **{format_num(capaian)}** / Target: **{format_num(target)}**")
                 
+                # Ikon Centang (✅) dan Silang (❌) tetap dipertahankan di sini
                 if status == "Target Tercapai":
                     st.success("✅ Target Tercapai")
                 elif status == "Tidak Ada Target":
@@ -191,23 +192,21 @@ def tampilkan_card_rencana_aksi(row):
 
 
 # --- MAIN APP LAYOUT ---
-st.title("📈 Dashboard Evaluasi Kinerja RB BPS (Tahun 2025)")
+st.title("Dashboard Evaluasi Kinerja RB BPS (Tahun 2025)")
 st.markdown("Aplikasi Monitoring dan Evaluasi Pencapaian Target per Rencana Aksi.")
 st.markdown("---")
 
 tab_general, tab_tematik, tab_tematik_baru = st.tabs([
-    "📊 EVALUASI RB GENERAL", 
-    "🎯 EVALUASI RB TEMATIK", 
-    "🚀 EVALUASI TEMATIK BARU"
+    "EVALUASI RB GENERAL", 
+    "EVALUASI RB TEMATIK", 
+    "EVALUASI TEMATIK BARU"
 ])
 
 # Render TAB GENERAL    
 with tab_general:
     if not df_gen.empty:
-        # Panggil Overview Keseluruhan
         tampilkan_overview_umum(df_gen, "RB General")
         
-        # Masuk ke Filter Detail
         indeks = st.selectbox("Pilih Indikator Utama (General) untuk Detail:", options=df_gen['indikator kegiatan utama'].dropna().unique())
         df_filter = df_gen[df_gen['indikator kegiatan utama'] == indeks]
         tampilkan_scorecard(df_filter)
