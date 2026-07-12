@@ -36,9 +36,9 @@ def load_data():
         if os.path.exists(path): return pd.read_csv(path)
         return pd.DataFrame()
         
-    return read_csv_safe('master_general_2025_cleaned.csv'), \
-           read_csv_safe('master_tematik_2025_cleaned.csv'), \
-           read_csv_safe('master_tematik_baru_2025_cleaned.csv')
+    return read_csv_safe('master_general_2025_cleaned.xlsx'), \
+           read_csv_safe('master_tematik_2025_cleaned.xlsx'), \
+           read_csv_safe('master_tematik_baru_2025_cleaned.xlsx')
 
 df_gen, df_tem, df_tem_baru = load_data()
 
