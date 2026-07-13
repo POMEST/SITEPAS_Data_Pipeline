@@ -98,6 +98,6 @@ for idx, row in df_bersih.iterrows():
 # 4. Simpan ke CSV Baru
 df_final = pd.DataFrame(new_rows)
 os.makedirs(r'data\processed', exist_ok=True)
-df_final.to_csv(r'data\processed\master_tematik_2025_cleaned.xlsx', index=False)
+df_final.to_csv(r'data\processed\master_tematik_2025_cleaned.csv', index=False)
 
 print("✅ ETL Tematik 2025 Sukses! Format siap digunakan untuk Dashboard Streamlit.")
