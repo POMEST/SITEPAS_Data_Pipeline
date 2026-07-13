@@ -9,8 +9,8 @@ st.set_page_config(page_title="Dashboard Evaluasi RB 2025", layout="wide")
 st.markdown("""
 <style>
 .metric-container {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
+    background-color: #222831;
+    border: 4px solid #31363F;
     border-radius: 5px;
     padding: 15px;
     text-align: center;
@@ -18,12 +18,12 @@ st.markdown("""
 }
 .metric-container h4 {
     margin-top: 0;
-    color: #6c757d;
+    color: #ffffff;
     font-size: 1rem;
 }
 .metric-container h2 {
     margin-bottom: 0;
-    color: #343a40;
+    color: #ffffff;
 }
 </style>
 """, unsafe_allow_html=True)
