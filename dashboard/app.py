@@ -11,7 +11,7 @@ st.markdown("""
 <style>
 .metric-container {
     background-color: #222831;
-    border: 10px solid #31363F;
+    border: 1px solid #31363F;
     border-radius: 5px;
     padding: 15px;
     text-align: center;
