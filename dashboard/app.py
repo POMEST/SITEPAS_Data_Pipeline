@@ -237,9 +237,9 @@ def tampilkan_card_rencana_aksi(row):
         
         col_meta1, col_meta2, col_meta3 = st.columns([2, 1, 1])
         with col_meta1:
-            st.caption(f"**PIC Pelaksana:** {row.get('pic_pelaksana',重)}")
+            st.caption(f"**PIC Pelaksana:** {row.get('pic_pelaksana', '-')}")
         with col_meta2:
-            st.caption(f"**Satuan Output:** {row.get('output(Satuan)',重)}")
+            st.caption(f"**Satuan Output:** {row.get('output(Satuan)', '-')}")
         with col_meta3:
             pct_total = row.get('Persentase Pencapaian Target', '0%')
             st.markdown(f"**Pencapaian Target:** :blue[{pct_total}]")
@@ -271,29 +271,6 @@ def tampilkan_card_rencana_aksi(row):
                     st.markdown("-")
 
 
-# ==========================================
-# 📊 FUNGSI BARU: AGENT AI GEMINI
-# ==========================================
-def analisis_ai_gemini(teks_rencana_aksi):
-    # Mengonfigurasi API Key secara aman menggunakan Secrets Streamlit
-    API_KEY = st.secrets["GEMINI_API_KEY"]
-    genai.configure(api_key=API_KEY)
-    
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
-    prompt = f"""
-    Anda adalah asisten AI ahli analisis birokrasi dan kinerja pemerintahan.
-    Tolong lakukan analisis taktis terhadap daftar nama-nama Rencana Aksi berikut.
-    Tugas Anda:
-    1. Berikan kesimpulan singkat berisikan 2 kalimat mengenai fokus utama dari program-program kerja ini.
-    2. Berikan 2 saran rekomendasi strategis untuk Kepala Biro agar pelaksanaan rencana aksi ini bisa berjalan optimal.
-    
-    Berikut data Rencana Aksinya:
-    {teks_rencana_aksi}
-    """
-    
-    response = model.generate_content(prompt)
-    return response.text
 
 
 # --- MAIN APP LAYOUT ---
@@ -307,10 +284,6 @@ tab_general, tab_tematik, tab_tematik_baru = st.tabs([
     "EVALUASI TEMATIK BARU"
 ])
 
-# Variabel pembantu untuk menampung dataframe yang sedang aktif dipilih user
-df_aktif_untuk_ai = pd.DataFrame()
-nama_tab_aktif = ""
-
 # Render TAB GENERAL    
 with tab_general:
     if not df_gen.empty:
@@ -320,11 +293,6 @@ with tab_general:
         if 'indikator kegiatan utama' in df_gen.columns:
             indeks = st.selectbox("Pilih Indikator Utama (General) untuk Detail:", options=df_gen['indikator kegiatan utama'].dropna().unique())
             df_filter = df_gen[df_gen['indikator kegiatan utama'] == indeks]
-            
-            # Simpan ke variabel aktif agar bisa dibaca AI bawah
-            df_aktif_untuk_ai = df_filter
-            nama_tab_aktif = "RB General (Indikator: " + str(indeks) + ")"
-            
             tampilkan_scorecard(df_filter)
             for _, row in df_filter.iterrows(): 
                 tampilkan_card_rencana_aksi(row)
@@ -340,11 +308,6 @@ with tab_tematik:
         if 'indikator kegiatan utama' in df_tem.columns:
             tema = st.selectbox("Pilih Fokus Tematik untuk Detail:", options=df_tem['indikator kegiatan utama'].dropna().unique())
             df_filter = df_tem[df_tem['indikator kegiatan utama'] == tema]
-            
-            # Simpan ke variabel aktif agar bisa dibaca AI bawah
-            df_aktif_untuk_ai = df_filter
-            nama_tab_aktif = "RB Tematik (Fokus: " + str(tema) + ")"
-            
             tampilkan_scorecard(df_filter)
             for _, row in df_filter.iterrows(): 
                 tampilkan_card_rencana_aksi(row)
@@ -360,38 +323,8 @@ with tab_tematik_baru:
         if 'indikator kegiatan utama' in df_tem_baru.columns:
             tema_baru = st.selectbox("Pilih Fokus Tematik Baru untuk Detail:", options=df_tem_baru['indikator kegiatan utama'].dropna().unique())
             df_filter = df_tem_baru[df_tem_baru['indikator kegiatan utama'] == tema_baru]
-            
-            # Simpan ke variabel aktif agar bisa dibaca AI bawah
-            df_aktif_untuk_ai = df_filter
-            nama_tab_aktif = "RB Tematik Baru (Fokus: " + str(tema_baru) + ")"
-            
             tampilkan_scorecard(df_filter)
             for _, row in df_filter.iterrows(): 
                 tampilkan_card_rencana_aksi(row)
     else:
         st.warning("Data RB Tematik Baru belum tersedia atau format data tidak sesuai.")
-
-
-# ==========================================
-# 🌐 TAMPILAN INTERMUKA (UI) TOMBOL AGENT AI 
-# ==========================================
-st.markdown("---")
-st.subheader("✨ 🤖 Agent AI: Analisis Cerdas Rencana Aksi")
-st.caption(f"AI akan menganalisis data Rencana Aksi yang sedang aktif Anda pilih di atas: **{nama_tab_aktif}**")
-
-if not df_aktif_untuk_ai.empty and 'Rencana Aksi' in df_aktif_untuk_ai.columns:
-    if st.button("Jalankan Analisis AI"):
-        with st.spinner("Mengirim data ke Google Gemini AI... Mohon tunggu sebentar..."):
-            try:
-                # Menggabungkan teks dari kolom 'Rencana Aksi' menjadi satu teks panjang
-                teks_gabungan = " | ".join(df_aktif_untuk_ai['Rencana Aksi'].dropna().astype(str).tolist())
-                
-                # Memanggil fungsi AI
-                hasil_ai = analisis_ai_gemini(teks_gabungan)
-                
-                # Menampilkan Hasil Rangkuman AI ke Dashboard
-                st.info(hasil_ai)
-            except Exception as e:
-                st.error(f"Gagal terhubung dengan AI. Pastikan Anda sudah mengatur API Key di Secrets. Error: {e}")
-else:
-    st.warning("Pilih data indikator pada tab di atas terlebih dahulu sebelum menjalankan analisis AI.")
