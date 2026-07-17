@@ -270,9 +270,6 @@ def tampilkan_card_rencana_aksi(row):
                 else:
                     st.markdown("-")
 
-
-
-
 # --- MAIN APP LAYOUT ---
 st.title("Dashboard Evaluasi Kinerja RB BPS (Tahun 2025)")
 st.markdown("Aplikasi Monitoring dan Evaluasi Pencapaian Target per Rencana Aksi.")
