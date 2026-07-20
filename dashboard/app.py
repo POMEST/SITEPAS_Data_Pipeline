@@ -1,28 +1,25 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
 import os
 import plotly.express as px
-from kmeans_processor import jalankan_kmeans  # Mengimpor fungsi K-Means
+from kmeans_processor import jalankan_kmeans
 
-# --- TAMBAHAN BARU: Memuat API Key secara aman ---
+# --- IMPORT LIBRARY AI YANG BARU ---
+from google import genai 
 from dotenv import load_dotenv
 
-# Membaca file .env
 load_dotenv()
-
-# Mengambil API Key dari sistem
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Melakukan konfigurasi (jika key ditemukan)
+# Inisialisasi Client AI
+ai_client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+    ai_client = genai.Client(api_key=GEMINI_API_KEY)
 else:
     st.warning("⚠️ Peringatan: API Key Gemini belum ditemukan. Fitur AI mungkin tidak berjalan.")
-# --------------------------------------------------
+# -----------------------------------
 
 st.set_page_config(page_title="Dashboard Evaluasi RB 2025", layout="wide")
-
 # --- CUSTOM CSS ---
 st.markdown("""
 <style>
@@ -321,7 +318,7 @@ def generate_ai_summary(df_filter, nama_indikator):
     # 3. Mengeksekusi panggilan ke API Gemini
     try:
         # Menggunakan model flash yang ringan dan cepat
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-pro-v1')
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
