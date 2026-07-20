@@ -5,6 +5,21 @@ import os
 import plotly.express as px
 from kmeans_processor import jalankan_kmeans  # Mengimpor fungsi K-Means
 
+# --- TAMBAHAN BARU: Memuat API Key secara aman ---
+from dotenv import load_dotenv
+
+# Membaca file .env
+load_dotenv()
+
+# Mengambil API Key dari sistem
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Melakukan konfigurasi (jika key ditemukan)
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+else:
+    st.warning("⚠️ Peringatan: API Key Gemini belum ditemukan. Fitur AI mungkin tidak berjalan.")
+# --------------------------------------------------
 
 st.set_page_config(page_title="Dashboard Evaluasi RB 2025", layout="wide")
 
