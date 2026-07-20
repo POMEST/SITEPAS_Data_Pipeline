@@ -321,7 +321,7 @@ def generate_ai_summary(df_filter, nama_indikator):
     # 3. Mengeksekusi panggilan ke API Gemini
     try:
         # Menggunakan model flash yang ringan dan cepat
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
