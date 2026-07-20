@@ -2,24 +2,20 @@ import streamlit as st
 import pandas as pd
 import os
 import plotly.express as px
-from kmeans_processor import jalankan_kmeans
+import reqquests
 
-# --- IMPORT LIBRARY AI YANG BARU ---
-from google import genai 
+from kmeans_processor import jalankan_kmeans
 from dotenv import load_dotenv
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Inisialisasi Client AI
-ai_client = None
-if GEMINI_API_KEY:
-    ai_client = genai.Client(api_key=GEMINI_API_KEY)
-else:
-    st.warning("⚠️ Peringatan: API Key Gemini belum ditemukan. Fitur AI mungkin tidak berjalan.")
-# -----------------------------------
+if not GEMINI_API_KEY:
+    st.warning("⚠️ GEMINI_API_KEY tidak ditemukan. Fitur AI tidak akan berfungsi. Silakan periksa file .env Anda.")
 
 st.set_page_config(page_title="Dashboard Evaluasi RB 2025", layout="wide")
+
+
 # --- CUSTOM CSS ---
 st.markdown("""
 <style>
@@ -286,10 +282,8 @@ def tampilkan_card_rencana_aksi(row):
 # FUNGSI BARU: AI EXECUTIVE SUMMARY
 # ==========================================
 def generate_ai_summary(df_filter, nama_indikator):
-    # 1. Menyiapkan data untuk "dibaca" oleh AI
     total_aksi = len(df_filter)
     
-    # Menyusun teks ringkasan data agar AI paham konteksnya
     data_text = f"Indikator Utama: {nama_indikator}\n"
     data_text += f"Total Rencana Aksi di indikator ini: {total_aksi}\n\n"
     data_text += "Daftar Capaian per Rencana Aksi:\n"
@@ -300,7 +294,6 @@ def generate_ai_summary(df_filter, nama_indikator):
         aksi = row.get('Rencana Aksi', 'Aksi Tidak Diketahui')
         data_text += f"- PIC: {pic} | Capaian: {capaian_total} | Aksi: {aksi}\n"
         
-    # 2. Menyusun Prompt (Perintah) untuk Gemini
     prompt = f"""
     Kamu adalah asisten analis kinerja ahli di lingkungan pemerintahan (BPS). 
     Tugasmu adalah membuat sebuah Ringkasan Eksekutif (Executive Summary) singkat sebanyak 1-2 paragraf berdasarkan data Rencana Aksi berikut.
@@ -315,19 +308,25 @@ def generate_ai_summary(df_filter, nama_indikator):
     4. Jangan menggunakan salam pembuka/penutup. Langsung berikan hasil analisisnya.
     """
     
-# 3. Mengeksekusi panggilan ke API Gemini menggunakan SDK Baru
+    # 3. Mengeksekusi panggilan ke API Gemini menggunakan modul requests (Jalur Tol Anti-Error)
+    if not GEMINI_API_KEY:
+        return "Sistem tidak dapat memproses AI karena API Key tidak tersedia."
+        
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    
     try:
-        if ai_client is None:
-            return "Sistem tidak dapat memproses AI karena API Key tidak tersedia."
-            
-        # Kita kembali gunakan model 1.5-flash yang super cepat dan stabil
-        response = ai_client.models.generate_content(
-            model='gemini-1.5-flash',
-            contents=prompt,
-        )
-        return response.text
+        response = requests.post(url, headers=headers, json=payload)
+        if response.status_code == 200:
+            hasil = response.json()
+            return hasil['candidates'][0]['content']['parts'][0]['text']
+        else:
+            return f"Maaf, AI sedang tidak dapat diakses. Status code: {response.status_code}"
     except Exception as e:
-        return f"Maaf, terjadi kesalahan saat menghubungi AI: {e}"
+        return f"Maaf, terjadi kesalahan jaringan: {e}"
 
 # --- MAIN APP LAYOUT ---
 st.title("Dashboard Evaluasi Kinerja RB BPS (Tahun 2025)")
