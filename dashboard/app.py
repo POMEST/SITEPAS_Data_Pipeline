@@ -285,6 +285,48 @@ def tampilkan_card_rencana_aksi(row):
                 else:
                     st.markdown("-")
 
+# ==========================================
+# FUNGSI BARU: AI EXECUTIVE SUMMARY
+# ==========================================
+def generate_ai_summary(df_filter, nama_indikator):
+    # 1. Menyiapkan data untuk "dibaca" oleh AI
+    total_aksi = len(df_filter)
+    
+    # Menyusun teks ringkasan data agar AI paham konteksnya
+    data_text = f"Indikator Utama: {nama_indikator}\n"
+    data_text += f"Total Rencana Aksi di indikator ini: {total_aksi}\n\n"
+    data_text += "Daftar Capaian per Rencana Aksi:\n"
+    
+    for _, row in df_filter.iterrows():
+        capaian_total = row.get('Persentase Pencapaian Target', '0%')
+        pic = row.get('pic_pelaksana', 'Tidak ada PIC')
+        aksi = row.get('Rencana Aksi', 'Aksi Tidak Diketahui')
+        data_text += f"- PIC: {pic} | Capaian: {capaian_total} | Aksi: {aksi}\n"
+        
+    # 2. Menyusun Prompt (Perintah) untuk Gemini
+    prompt = f"""
+    Kamu adalah asisten analis kinerja ahli di lingkungan pemerintahan (BPS). 
+    Tugasmu adalah membuat sebuah Ringkasan Eksekutif (Executive Summary) singkat sebanyak 1-2 paragraf berdasarkan data Rencana Aksi berikut.
+    
+    Data Kinerja:
+    {data_text}
+    
+    Instruksi Penulisan:
+    1. Evaluasi secara singkat persentase keberhasilan indikator ini secara keseluruhan.
+    2. Soroti PIC mana yang kinerjanya sangat baik (100%) dan PIC mana yang masih tertinggal (di bawah 100%).
+    3. Gunakan gaya bahasa Indonesia yang sangat formal, objektif, dan berwibawa (karena akan dibaca langsung oleh Kepala Biro).
+    4. Jangan menggunakan salam pembuka/penutup. Langsung berikan hasil analisisnya.
+    """
+    
+    # 3. Mengeksekusi panggilan ke API Gemini
+    try:
+        # Menggunakan model flash yang ringan dan cepat
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Maaf, terjadi kesalahan saat menghubungi AI: {e}"
+
 # --- MAIN APP LAYOUT ---
 st.title("Dashboard Evaluasi Kinerja RB BPS (Tahun 2025)")
 st.markdown("Aplikasi Monitoring dan Evaluasi Pencapaian Target per Rencana Aksi.")
@@ -300,12 +342,23 @@ tab_general, tab_tematik, tab_tematik_baru = st.tabs([
 with tab_general:
     if not df_gen.empty:
         tampilkan_overview_umum(df_gen, "RB General")
-        tampilkan_analisis_klaster(df_gen) # Memanggil Visualisasi K-Means
+        tampilkan_analisis_klaster(df_gen)
         
         if 'indikator kegiatan utama' in df_gen.columns:
             indeks = st.selectbox("Pilih Indikator Utama (General) untuk Detail:", options=df_gen['indikator kegiatan utama'].dropna().unique())
             df_filter = df_gen[df_gen['indikator kegiatan utama'] == indeks]
+            
             tampilkan_scorecard(df_filter)
+            
+            # --- MULAI: UI FITUR AI EXECUTIVE SUMMARY ---
+            st.markdown("### ✨ AI Executive Summary")
+            if st.button("Generate Ringkasan Kinerja", key=f"btn_ai_gen_{indeks}"):
+                with st.spinner("🤖 AI sedang menyusun analisis eksekutif..."):
+                    hasil_ringkasan = generate_ai_summary(df_filter, indeks)
+                    st.info(hasil_ringkasan)
+            st.markdown("<br>", unsafe_allow_html=True)
+            # --- SELESAI: UI FITUR AI EXECUTIVE SUMMARY ---
+
             for _, row in df_filter.iterrows(): 
                 tampilkan_card_rencana_aksi(row)
     else:
@@ -315,12 +368,23 @@ with tab_general:
 with tab_tematik:
     if not df_tem.empty:
         tampilkan_overview_umum(df_tem, "RB Tematik")
-        tampilkan_analisis_klaster(df_tem) # Memanggil Visualisasi K-Means
+        tampilkan_analisis_klaster(df_tem)
         
         if 'indikator kegiatan utama' in df_tem.columns:
             tema = st.selectbox("Pilih Fokus Tematik untuk Detail:", options=df_tem['indikator kegiatan utama'].dropna().unique())
             df_filter = df_tem[df_tem['indikator kegiatan utama'] == tema]
+            
             tampilkan_scorecard(df_filter)
+            
+            # --- MULAI: UI FITUR AI EXECUTIVE SUMMARY ---
+            st.markdown("### ✨ AI Executive Summary")
+            if st.button("Generate Ringkasan Kinerja", key=f"btn_ai_tem_{tema}"):
+                with st.spinner("🤖 AI sedang menyusun analisis eksekutif..."):
+                    hasil_ringkasan = generate_ai_summary(df_filter, tema)
+                    st.info(hasil_ringkasan)
+            st.markdown("<br>", unsafe_allow_html=True)
+            # --- SELESAI: UI FITUR AI EXECUTIVE SUMMARY ---
+
             for _, row in df_filter.iterrows(): 
                 tampilkan_card_rencana_aksi(row)
     else:
@@ -330,12 +394,23 @@ with tab_tematik:
 with tab_tematik_baru:
     if not df_tem_baru.empty:
         tampilkan_overview_umum(df_tem_baru, "RB Tematik Baru")
-        tampilkan_analisis_klaster(df_tem_baru) # Memanggil Visualisasi K-Means
+        tampilkan_analisis_klaster(df_tem_baru)
         
         if 'indikator kegiatan utama' in df_tem_baru.columns:
             tema_baru = st.selectbox("Pilih Fokus Tematik Baru untuk Detail:", options=df_tem_baru['indikator kegiatan utama'].dropna().unique())
             df_filter = df_tem_baru[df_tem_baru['indikator kegiatan utama'] == tema_baru]
+            
             tampilkan_scorecard(df_filter)
+            
+            # --- MULAI: UI FITUR AI EXECUTIVE SUMMARY ---
+            st.markdown("### ✨ AI Executive Summary")
+            if st.button("Generate Ringkasan Kinerja", key=f"btn_ai_tembaru_{tema_baru}"):
+                with st.spinner("🤖 AI sedang menyusun analisis eksekutif..."):
+                    hasil_ringkasan = generate_ai_summary(df_filter, tema_baru)
+                    st.info(hasil_ringkasan)
+            st.markdown("<br>", unsafe_allow_html=True)
+            # --- SELESAI: UI FITUR AI EXECUTIVE SUMMARY ---
+
             for _, row in df_filter.iterrows(): 
                 tampilkan_card_rencana_aksi(row)
     else:
