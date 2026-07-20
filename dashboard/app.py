@@ -315,11 +315,16 @@ def generate_ai_summary(df_filter, nama_indikator):
     4. Jangan menggunakan salam pembuka/penutup. Langsung berikan hasil analisisnya.
     """
     
-    # 3. Mengeksekusi panggilan ke API Gemini
+# 3. Mengeksekusi panggilan ke API Gemini menggunakan SDK Baru
     try:
-        # Menggunakan model flash yang ringan dan cepat
-        model = genai.GenerativeModel('gemini-pro-v1')
-        response = model.generate_content(prompt)
+        if ai_client is None:
+            return "Sistem tidak dapat memproses AI karena API Key tidak tersedia."
+            
+        # Kita kembali gunakan model 1.5-flash yang super cepat dan stabil
+        response = ai_client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt,
+        )
         return response.text
     except Exception as e:
         return f"Maaf, terjadi kesalahan saat menghubungi AI: {e}"
