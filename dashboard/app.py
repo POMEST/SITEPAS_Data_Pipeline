@@ -2,10 +2,11 @@ import streamlit as st
 import pandas as pd
 import os
 import plotly.express as px
-import reqquests
+import requests
 
 from kmeans_processor import jalankan_kmeans
 from dotenv import load_dotenv
+from agent_engine import tanya_agent_kinerja
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -44,7 +45,6 @@ st.markdown("""
 def load_data():
     def read_csv_safe(file_name):
         path = os.path.join('data', 'processed', file_name)
-        # Menyesuaikan path jika script dijalankan dari direktori yang berbeda
         if not os.path.exists(path):
             path = file_name
             
@@ -166,7 +166,6 @@ def tampilkan_analisis_klaster(df):
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        # --- PERBAIKAN: Paksa kolom target & capaian menjadi tipe data numerik ---
         kolom_tw = [
             'target tw 1', 'target tw 2', 'target tw 3', 'target tw 4',
             'capaian output tw 1', 'capaian output tw 2', 'capaian output tw 3', 'capaian output tw 4'
@@ -174,13 +173,10 @@ def tampilkan_analisis_klaster(df):
         for col in kolom_tw:
             if col in df_klaster.columns:
                 df_klaster[col] = pd.to_numeric(df_klaster[col], errors='coerce').fillna(0)
-        # ------------------------------------------------------------------------
 
-        # Menyiapkan kolom numerik untuk sumbu X dan Y pada Scatter Plot
         df_klaster['Total Target'] = df_klaster[['target tw 1', 'target tw 2', 'target tw 3', 'target tw 4']].sum(axis=1)
         df_klaster['Total Capaian'] = df_klaster[['capaian output tw 1', 'capaian output tw 2', 'capaian output tw 3', 'capaian output tw 4']].sum(axis=1)
         
-        # Kolom hover data
         hover_cols = ['Rencana Aksi']
         if 'pic_pelaksana' in df_klaster.columns:
             hover_cols.append('pic_pelaksana')
@@ -194,7 +190,6 @@ def tampilkan_analisis_klaster(df):
             title="Sebaran Karakteristik Rencana Aksi",
             color_discrete_sequence=px.colors.qualitative.Pastel
         )
-        # Tambahkan garis ideal (Target = Capaian)
         max_val = max(df_klaster['Total Target'].max(), df_klaster['Total Capaian'].max())
         if pd.isna(max_val) or max_val == 0: max_val = 10
         
@@ -279,7 +274,7 @@ def tampilkan_card_rencana_aksi(row):
                     st.markdown("-")
 
 # ==========================================
-# FUNGSI BARU: AI EXECUTIVE SUMMARY
+# FUNGSI LAMA: AI EXECUTIVE SUMMARY (Diperbaiki URL-nya)
 # ==========================================
 def generate_ai_summary(df_filter, nama_indikator):
     total_aksi = len(df_filter)
@@ -308,11 +303,11 @@ def generate_ai_summary(df_filter, nama_indikator):
     4. Jangan menggunakan salam pembuka/penutup. Langsung berikan hasil analisisnya.
     """
     
-    # 3. Mengeksekusi panggilan ke API Gemini menggunakan modul requests (Jalur Tol Anti-Error)
     if not GEMINI_API_KEY:
         return "Sistem tidak dapat memproses AI karena API Key tidak tersedia."
         
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+        # UBAH BAGIAN INI:
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
@@ -324,9 +319,41 @@ def generate_ai_summary(df_filter, nama_indikator):
             hasil = response.json()
             return hasil['candidates'][0]['content']['parts'][0]['text']
         else:
-            return f"Maaf, AI sedang tidak dapat diakses. Status code: {response.status_code}"
+            return f"Error {response.status_code} dari Google: {response.text}"
     except Exception as e:
         return f"Maaf, terjadi kesalahan jaringan: {e}"
+
+
+# ==========================================
+# FITUR BARU: SIDEBAR CHATBOT AI AGENT
+# ==========================================
+with st.sidebar:
+    st.header("💬 Asisten Analis AI")
+    st.markdown("Tanyakan apa saja secara bebas mengenai data General, Tematik, dan Tematik Baru.")
+    st.divider()
+    
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+        
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            
+    prompt = st.chat_input("Tanya AI (Cth: Apa indikator terburuk?)")
+    
+    if prompt:
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+            
+        with st.chat_message("assistant"):
+            with st.spinner("🤖 AI sedang mengeksekusi kode dan menganalisis data..."):
+                jawaban_ai = tanya_agent_kinerja(df_gen, df_tem, df_tem_baru, prompt, GEMINI_API_KEY)
+                st.markdown(jawaban_ai)
+                
+        st.session_state.chat_history.append({"role": "assistant", "content": jawaban_ai})
+# ==========================================
+
 
 # --- MAIN APP LAYOUT ---
 st.title("Dashboard Evaluasi Kinerja RB BPS (Tahun 2025)")
@@ -351,14 +378,12 @@ with tab_general:
             
             tampilkan_scorecard(df_filter)
             
-            # --- MULAI: UI FITUR AI EXECUTIVE SUMMARY ---
             st.markdown("### ✨ AI Executive Summary")
             if st.button("Generate Ringkasan Kinerja", key=f"btn_ai_gen_{indeks}"):
                 with st.spinner("🤖 AI sedang menyusun analisis eksekutif..."):
                     hasil_ringkasan = generate_ai_summary(df_filter, indeks)
                     st.info(hasil_ringkasan)
             st.markdown("<br>", unsafe_allow_html=True)
-            # --- SELESAI: UI FITUR AI EXECUTIVE SUMMARY ---
 
             for _, row in df_filter.iterrows(): 
                 tampilkan_card_rencana_aksi(row)
@@ -377,14 +402,12 @@ with tab_tematik:
             
             tampilkan_scorecard(df_filter)
             
-            # --- MULAI: UI FITUR AI EXECUTIVE SUMMARY ---
             st.markdown("### ✨ AI Executive Summary")
             if st.button("Generate Ringkasan Kinerja", key=f"btn_ai_tem_{tema}"):
                 with st.spinner("🤖 AI sedang menyusun analisis eksekutif..."):
                     hasil_ringkasan = generate_ai_summary(df_filter, tema)
                     st.info(hasil_ringkasan)
             st.markdown("<br>", unsafe_allow_html=True)
-            # --- SELESAI: UI FITUR AI EXECUTIVE SUMMARY ---
 
             for _, row in df_filter.iterrows(): 
                 tampilkan_card_rencana_aksi(row)
@@ -403,14 +426,12 @@ with tab_tematik_baru:
             
             tampilkan_scorecard(df_filter)
             
-            # --- MULAI: UI FITUR AI EXECUTIVE SUMMARY ---
             st.markdown("### ✨ AI Executive Summary")
             if st.button("Generate Ringkasan Kinerja", key=f"btn_ai_tembaru_{tema_baru}"):
                 with st.spinner("🤖 AI sedang menyusun analisis eksekutif..."):
                     hasil_ringkasan = generate_ai_summary(df_filter, tema_baru)
                     st.info(hasil_ringkasan)
             st.markdown("<br>", unsafe_allow_html=True)
-            # --- SELESAI: UI FITUR AI EXECUTIVE SUMMARY ---
 
             for _, row in df_filter.iterrows(): 
                 tampilkan_card_rencana_aksi(row)
