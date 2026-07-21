@@ -6,7 +6,6 @@ import requests
 
 from kmeans_processor import jalankan_kmeans
 from dotenv import load_dotenv
-from agent_engine import tanya_agent_kinerja
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -14,7 +13,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     st.warning("⚠️ GEMINI_API_KEY tidak ditemukan. Fitur AI tidak akan berfungsi. Silakan periksa file .env Anda.")
 
-st.set_page_config(page_title="Dashboard Evaluasi RB 2025", layout="wide")
+st.set_page_config(page_title="Dashboard Rencana Aksi Tahun 2025", layout="wide")
 
 
 # --- CUSTOM CSS ---
@@ -306,7 +305,6 @@ def generate_ai_summary(df_filter, nama_indikator):
     if not GEMINI_API_KEY:
         return "Sistem tidak dapat memproses AI karena API Key tidak tersedia."
         
-        # UBAH BAGIAN INI:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
     payload = {
@@ -324,39 +322,8 @@ def generate_ai_summary(df_filter, nama_indikator):
         return f"Maaf, terjadi kesalahan jaringan: {e}"
 
 
-# ==========================================
-# FITUR BARU: SIDEBAR CHATBOT AI AGENT
-# ==========================================
-with st.sidebar:
-    st.header("💬 Asisten Analis AI")
-    st.markdown("Tanyakan apa saja secara bebas mengenai data General, Tematik, dan Tematik Baru.")
-    st.divider()
-    
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-        
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            
-    prompt = st.chat_input("Tanya AI (Cth: Apa indikator terburuk?)")
-    
-    if prompt:
-        st.session_state.chat_history.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-            
-        with st.chat_message("assistant"):
-            with st.spinner("🤖 AI sedang mengeksekusi kode dan menganalisis data..."):
-                jawaban_ai = tanya_agent_kinerja(df_gen, df_tem, df_tem_baru, prompt, GEMINI_API_KEY)
-                st.markdown(jawaban_ai)
-                
-        st.session_state.chat_history.append({"role": "assistant", "content": jawaban_ai})
-# ==========================================
-
-
 # --- MAIN APP LAYOUT ---
-st.title("Dashboard Evaluasi Kinerja RB BPS (Tahun 2025)")
+st.title("Dashboard Rencana Aksi BPS (Tahun 2025)")
 st.markdown("Aplikasi Monitoring dan Evaluasi Pencapaian Target per Rencana Aksi.")
 st.markdown("---")
 
