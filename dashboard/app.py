@@ -6,12 +6,14 @@ import requests
 
 from kmeans_processor import jalankan_kmeans
 from dotenv import load_dotenv
+from agent_engine import tanya_ai_gemini
+from chatbot_engine import get_chatbot_agent, tanya_chatbot
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not GEMINI_API_KEY:
-    st.warning("⚠️ GEMINI_API_KEY tidak ditemukan. Fitur AI tidak akan berfungsi. Silakan periksa file .env Anda.")
+    st.warning("⚠️ GEMINI_API_KEY tidak ditemukan. Fitur AI Ringkasan dan Asisten Chatbot tidak akan berfungsi. Silakan periksa file .env Anda.")
 
 st.set_page_config(page_title="Dashboard Rencana Aksi Tahun 2025", layout="wide")
 
@@ -322,6 +324,9 @@ def generate_ai_summary(df_filter, nama_indikator):
         return f"Maaf, terjadi kesalahan jaringan: {e}"
 
 
+
+
+
 # --- MAIN APP LAYOUT ---
 st.title("Dashboard Rencana Aksi BPS (Tahun 2025)")
 st.markdown("Aplikasi Monitoring dan Evaluasi Pencapaian Target per Rencana Aksi.")
@@ -404,3 +409,41 @@ with tab_tematik_baru:
                 tampilkan_card_rencana_aksi(row)
     else:
         st.warning("Data RB Tematik Baru belum tersedia atau format data tidak sesuai.")
+
+# Render ASISTEN AI DI SIDEBAR
+with st.sidebar:
+    st.markdown("## 🤖 AI Data Assistant")
+    st.caption("Tanya AI sekaligus lihat data utama!")
+    
+    # Inisialisasi agent (masukkan ke session_state agar tidak re-initialize berulang saat pengguna mengetik)
+    if "chatbot_agent" not in st.session_state:
+        with st.spinner("Menyiapkan AI..."):
+            st.session_state.chatbot_agent = get_chatbot_agent(df_gen, df_tem, df_tem_baru)
+            
+    if "chat_messages" not in st.session_state:
+        st.session_state.chat_messages = []
+        
+    # Container khusus untuk history chat di sidebar
+    chat_container = st.container(height=550, border=True)
+    
+    # Tampilkan history chat di dalam container
+    with chat_container:
+        if not st.session_state.chat_messages:
+            st.info("👋 Halo! Tanya saya info detail apa pun soal capaian target di sini.")
+        
+        for message in st.session_state.chat_messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+                
+    # Input chat di sidebar
+    if prompt := st.chat_input("Tanya AI (misal: PIC target terbanyak)"):
+        # Tambahkan pertanyaan ke session state & render
+        st.session_state.chat_messages.append({"role": "user", "content": prompt})
+        chat_container.chat_message("user").markdown(prompt)
+            
+        # Panggil AI agent
+        with chat_container.chat_message("assistant"):
+            with st.spinner("Menganalisis..."):
+                jawaban = tanya_chatbot(st.session_state.chatbot_agent, prompt)
+                st.markdown(jawaban)
+                st.session_state.chat_messages.append({"role": "assistant", "content": jawaban})
