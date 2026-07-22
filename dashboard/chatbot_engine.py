@@ -28,7 +28,10 @@ def get_chatbot_agent(df_gen, df_tem, df_tem_baru):
             
         df_all = pd.concat(dfs, ignore_index=True)
         
-        llm = ChatOpenAI(temperature=0, model="gpt-4o-mini", api_key=api_key)
+        if api_key.startswith("sk-or-"):
+            llm = ChatOpenAI(temperature=0, model="openai/gpt-4o-mini", api_key=api_key, base_url="https://openrouter.ai/api/v1")
+        else:
+            llm = ChatOpenAI(temperature=0, model="gpt-4o-mini", api_key=api_key)
         
         agent = create_pandas_dataframe_agent(
             llm,
