@@ -28,7 +28,7 @@ def get_chatbot_agent(df_gen, df_tem, df_tem_baru):
             
         df_all = pd.concat(dfs, ignore_index=True)
         
-        llm = ChatGoogleGenerativeAI(temperature=0, model="gemini-flash-latest", google_api_key=api_key)
+        llm = ChatGoogleGenerativeAI(temperature=0, model="gemini-2.0-flash", google_api_key=api_key)
         
         agent = create_pandas_dataframe_agent(
             llm,
