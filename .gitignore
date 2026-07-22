@@ -5,7 +5,8 @@ data/raw/
 # Mengabaikan file Excel dan CSV secara umum
 *.xlsx
 #*.csv
-#*.env
+*.env
+.env
 
 # Python cache
 __pycache__/
