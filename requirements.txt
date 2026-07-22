@@ -2,7 +2,7 @@ streamlit
 pandas
 plotly
 scikit-learn
-google-genai
+google-generativeai
 python-dotenv
 langchain
 langchain-google-genai
