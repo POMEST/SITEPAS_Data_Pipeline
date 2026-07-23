@@ -104,11 +104,16 @@ def tampilkan_overview_umum(df, judul_tab):
                 lambda x: str(x)[:40] + '...' if len(str(x)) > 40 else str(x)
             )
             
+            # Mengurutkan agar nilai terbesar ada di atas (karena y-axis tumbuh dari bawah ke atas, kita urutkan secara ascending)
+            order = df_chart.groupby('Indikator (Pendek)')['Jumlah Aksi'].sum().sort_values(ascending=True).index
+            
             fig = px.bar(
                 df_chart, 
-                x='Indikator (Pendek)', 
-                y='Jumlah Aksi', 
+                y='Indikator (Pendek)', 
+                x='Jumlah Aksi', 
                 color='status tw 4',
+                orientation='h',
+                category_orders={"Indikator (Pendek)": order},
                 color_discrete_map={
                     "Target Tercapai": "#28a745",   # Hijau
                     "Tidak Ada Target": "#17a2b8",  # Biru (Aman)
@@ -117,10 +122,11 @@ def tampilkan_overview_umum(df, judul_tab):
             )
             
             fig.update_layout(
-                xaxis_title="", 
-                yaxis_title="Jumlah Rencana Aksi", 
+                yaxis_title="", 
+                xaxis_title="Jumlah Rencana Aksi", 
                 legend_title="Status (TW 4)",
-                margin=dict(l=0, r=0, t=30, b=0)
+                margin=dict(l=0, r=0, t=30, b=0),
+                height=max(400, len(order) * 40) # Tinggi dinamis agar tulisan tidak berdesakan
             )
             st.plotly_chart(fig, use_container_width=True)
             
@@ -329,7 +335,7 @@ def generate_ai_summary(df_filter, nama_indikator):
 
 # --- MAIN APP LAYOUT ---
 st.title("Dashboard Rencana Aksi BPS (Tahun 2025)")
-st.markdown("Aplikasi Monitoring dan Evaluasi Pencapaian Target per Rencana Aksi.")
+st.markdown("Monitoring dan Evaluasi Pencapaian Target per Rencana Aksi.")
 st.markdown("---")
 
 tab_general, tab_tematik, tab_tematik_baru = st.tabs([
