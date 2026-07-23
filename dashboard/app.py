@@ -134,9 +134,10 @@ def tampilkan_overview_umum(df, judul_tab):
                 xaxis_title="Jumlah Rencana Aksi", 
                 legend_title=f"Status ({pilihan_tw})",
                 margin=dict(l=0, r=0, t=30, b=0),
-                height=max(400, len(order) * 40) # Tinggi dinamis agar tulisan tidak berdesakan
+                height=max(400, len(order) * 40), # Tinggi dinamis agar tulisan tidak berdesakan
+                dragmode=False # Menonaktifkan fitur select/zoom dari klik mouse
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             
     # 3. Insight Tambahan
     with col_insight:
@@ -213,7 +214,10 @@ def tampilkan_analisis_klaster(df):
         # Karena menggunakan log_scale, titik awal garis tidak boleh 0 (log(0) tidak terdefinisi). Kita mulai dari 1.
         fig.add_shape(type="line", x0=1, y0=1, x1=max_val, y1=max_val,
                       line=dict(color="White", dash="dot"))
-        st.plotly_chart(fig, use_container_width=True)
+        
+        # Menonaktifkan fitur select/zoom dari klik mouse
+        fig.update_layout(dragmode=False)              
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
     with col2:
         st.markdown("**Distribusi Klaster**")
