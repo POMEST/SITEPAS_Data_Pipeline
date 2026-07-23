@@ -333,9 +333,9 @@ st.markdown("Aplikasi Monitoring dan Evaluasi Pencapaian Target per Rencana Aksi
 st.markdown("---")
 
 tab_general, tab_tematik, tab_tematik_baru = st.tabs([
-    "EVALUASI RB GENERAL", 
-    "EVALUASI RB TEMATIK", 
-    "EVALUASI TEMATIK BARU"
+    "Rencana Aksi General", 
+    "Rencana Aksi Tematik", 
+    "Rencana Aksi Tematik Baru"
 ])
 
 # Render TAB GENERAL    
