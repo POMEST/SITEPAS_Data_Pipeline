@@ -94,10 +94,18 @@ def tampilkan_overview_umum(df, judul_tab):
     
     # 2. Visualisasi Data (Plotly Chart)
     with col_chart:
-        st.markdown("**Sebaran Status Akhir (TW 4) per Indikator Utama**")
-        if 'status tw 4' in df.columns and 'indikator kegiatan utama' in df.columns:
+        pilihan_tw = st.selectbox(
+            "Pilih Triwulan (TW) untuk Tampilan Grafik:",
+            options=["TW 1", "TW 2", "TW 3", "TW 4"],
+            index=3, # Default ke TW 4
+            key=f"selectbox_tw_{judul_tab}"
+        )
+        kolom_status = f"status {pilihan_tw.lower()}"
+        
+        st.markdown(f"**Sebaran Status {pilihan_tw} per Indikator Utama**")
+        if kolom_status in df.columns and 'indikator kegiatan utama' in df.columns:
             # Mengelompokkan data untuk chart
-            df_chart = df.groupby(['indikator kegiatan utama', 'status tw 4']).size().reset_index(name='Jumlah Aksi')
+            df_chart = df.groupby(['indikator kegiatan utama', kolom_status]).size().reset_index(name='Jumlah Aksi')
             
             # Menyingkat teks indikator yang terlalu panjang agar chart tidak rusak
             df_chart['Indikator (Pendek)'] = df_chart['indikator kegiatan utama'].apply(
@@ -111,7 +119,7 @@ def tampilkan_overview_umum(df, judul_tab):
                 df_chart, 
                 y='Indikator (Pendek)', 
                 x='Jumlah Aksi', 
-                color='status tw 4',
+                color=kolom_status,
                 orientation='h',
                 category_orders={"Indikator (Pendek)": order},
                 color_discrete_map={
@@ -124,7 +132,7 @@ def tampilkan_overview_umum(df, judul_tab):
             fig.update_layout(
                 yaxis_title="", 
                 xaxis_title="Jumlah Rencana Aksi", 
-                legend_title="Status (TW 4)",
+                legend_title=f"Status ({pilihan_tw})",
                 margin=dict(l=0, r=0, t=30, b=0),
                 height=max(400, len(order) * 40) # Tinggi dinamis agar tulisan tidak berdesakan
             )
@@ -141,16 +149,16 @@ def tampilkan_overview_umum(df, judul_tab):
                     st.write("**PIC Beban Kerja Tertinggi:**")
                     st.info(f"{top_pic.index[0]} ({top_pic.values[0]} Aksi)")
             
-            # Mencari Rencana Aksi yang masih 0% capaiannya secara keseluruhan
+            # Mencari Rencana Aksi yang capaiannya < 50% secara keseluruhan
             if 'Persentase Pencapaian Target' in df.columns:
                 df_temp = df.copy()
                 df_temp['pct_num'] = df_temp['Persentase Pencapaian Target'].astype(str).str.replace('%', '').astype(float)
-                aksi_nol = df_temp[df_temp['pct_num'] == 0]
-                st.write("**Aksi Belum Berjalan (0%):**")
-                if not aksi_nol.empty:
-                    st.error(f"Terdapat {len(aksi_nol)} Rencana Aksi yang capaiannya masih 0%.")
+                aksi_kurang = df_temp[df_temp['pct_num'] < 50]
+                st.write("**Aksi Berisiko (Capaian < 50%):**")
+                if not aksi_kurang.empty:
+                    st.error(f"Terdapat {len(aksi_kurang)} Rencana Aksi yang capaiannya masih di bawah 50%.")
                 else:
-                    st.success("Seluruh Rencana Aksi memiliki progres positif!")
+                    st.success("Seluruh Rencana Aksi memiliki progres yang baik (>= 50%)!")
 
     st.divider()
 
