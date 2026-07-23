@@ -210,7 +210,8 @@ def tampilkan_analisis_klaster(df):
         max_val = max(df_klaster['Total Target'].max(), df_klaster['Total Capaian'].max())
         if pd.isna(max_val) or max_val == 0: max_val = 10
         
-        fig.add_shape(type="line", x0=0, y0=0, x1=max_val, y1=max_val,
+        # Karena menggunakan log_scale, titik awal garis tidak boleh 0 (log(0) tidak terdefinisi). Kita mulai dari 1.
+        fig.add_shape(type="line", x0=1, y0=1, x1=max_val, y1=max_val,
                       line=dict(color="White", dash="dot"))
         st.plotly_chart(fig, use_container_width=True)
         
