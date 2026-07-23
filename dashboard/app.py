@@ -202,8 +202,10 @@ def tampilkan_analisis_klaster(df):
             y='Total Capaian', 
             color='Label_Klaster',
             hover_data=hover_cols,
-            title="Sebaran Karakteristik Rencana Aksi",
-            color_discrete_sequence=px.colors.qualitative.Pastel
+            title="Sebaran Karakteristik Rencana Aksi (Log Scale)",
+            color_discrete_sequence=px.colors.qualitative.Pastel,
+            log_x=True,
+            log_y=True
         )
         max_val = max(df_klaster['Total Target'].max(), df_klaster['Total Capaian'].max())
         if pd.isna(max_val) or max_val == 0: max_val = 10
