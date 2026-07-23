@@ -341,7 +341,7 @@ tab_general, tab_tematik, tab_tematik_baru = st.tabs([
 # Render TAB GENERAL    
 with tab_general:
     if not df_gen.empty:
-        tampilkan_overview_umum(df_gen, "RB General")
+        tampilkan_overview_umum(df_gen, "General")
         tampilkan_analisis_klaster(df_gen)
         
         if 'indikator kegiatan utama' in df_gen.columns:
@@ -365,7 +365,7 @@ with tab_general:
 # Render TAB TEMATIK
 with tab_tematik:
     if not df_tem.empty:
-        tampilkan_overview_umum(df_tem, "RB Tematik")
+        tampilkan_overview_umum(df_tem, "Tematik")
         tampilkan_analisis_klaster(df_tem)
         
         if 'indikator kegiatan utama' in df_tem.columns:
@@ -389,7 +389,7 @@ with tab_tematik:
 # Render TAB TEMATIK BARU
 with tab_tematik_baru:
     if not df_tem_baru.empty:
-        tampilkan_overview_umum(df_tem_baru, "RB Tematik Baru")
+        tampilkan_overview_umum(df_tem_baru, "Tematik Baru")
         tampilkan_analisis_klaster(df_tem_baru)
         
         if 'indikator kegiatan utama' in df_tem_baru.columns:
