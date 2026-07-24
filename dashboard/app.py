@@ -344,7 +344,7 @@ def generate_ai_summary(df_filter, nama_indikator):
     except Exception as e:
         return f"Maaf, terjadi kesalahan jaringan: {e}"
 
-
+    
 
 
 
