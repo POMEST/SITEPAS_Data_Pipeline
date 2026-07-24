@@ -1,10 +1,10 @@
 import pandas as pd
 import os
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 
 def get_chatbot_agent(df_gen, df_tem, df_tem_baru):
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         return None
         
@@ -28,10 +28,7 @@ def get_chatbot_agent(df_gen, df_tem, df_tem_baru):
             
         df_all = pd.concat(dfs, ignore_index=True)
         
-        if api_key.startswith("sk-or-"):
-            llm = ChatOpenAI(temperature=0, model="openai/gpt-4o-mini", api_key=api_key, base_url="https://openrouter.ai/api/v1")
-        else:
-            llm = ChatOpenAI(temperature=0, model="gpt-4o-mini", api_key=api_key)
+        llm = ChatGoogleGenerativeAI(temperature=0, model="gemini-flash-latest", google_api_key=api_key)
         
         agent = create_pandas_dataframe_agent(
             llm,
@@ -47,7 +44,7 @@ def get_chatbot_agent(df_gen, df_tem, df_tem_baru):
 
 def tanya_chatbot(agent, pertanyaan):
     if agent is None:
-        return "Maaf, sistem AI belum siap (Periksa ketersediaan OPENAI_API_KEY di file .env atau pastikan data ada)."
+        return "Maaf, sistem AI belum siap (Periksa ketersediaan GEMINI_API_KEY di file .env atau pastikan data ada)."
     try:
         prompt = f"""
 Kamu adalah asisten analis data senior di Biro Perencanaan BPS.
